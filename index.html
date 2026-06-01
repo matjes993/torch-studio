@@ -112,6 +112,7 @@
       <div class="row">
         <label class="toggle"><input type="checkbox" id="linkGap"> 🔗 lock vertical gap = text-line gap</label>
         <button id="snapR">⟳ flame width = R width</button>
+        <button id="alignH">⇕ align text height to icon</button>
       </div>
       <div class="pane-foot"><button data-resettab="shape">⟲ reset shape &amp; spacing</button></div>
     </div>
@@ -137,7 +138,10 @@
       <div class="controls" id="t_icongrad" style="margin-top:.8rem"></div>
       <div class="palette-controls" id="t_iconcolors" style="margin-top:.9rem"></div>
       <div class="grouplabel">Glow</div>
-      <div class="row" style="margin-top:.2rem"><label class="toggle"><input type="checkbox" id="glowToggle"> glow on the icons</label></div>
+      <div class="row" style="margin-top:.2rem">
+        <label class="toggle"><input type="checkbox" id="glowToggle"> glow on the icons</label>
+        <label class="toggle"><input type="checkbox" id="textGlowToggle"> glow on the text (live preview only)</label>
+      </div>
       <div class="controls" id="t_glow" style="margin-top:.8rem"></div>
       <div class="grouplabel">Text colour — Resonance / Labs</div>
       <div class="row" style="margin-top:.2rem"><label class="toggle"><input type="checkbox" id="textGradToggle"> gradient across both words (brand flow) — else individual</label></div>
@@ -211,10 +215,11 @@ function iconTag(which,s,mode,targetW){const p=iconSVGInner(which,s,mode),sc=tar
 function iconsRow(s,mode,targetW){const ord=['breath','signal','resonance'];return `<div style="display:flex;align-items:center;gap:${(targetW*0.32).toFixed(0)}px">`+ord.map(w=>iconTag(w,s,mode,targetW)).join('')+`</div>`;}
 
 /* full lockup + torch-only */
-function lockupHTML(st,id,targetWM){const k=targetWM/st.FZ;const s2=Object.assign({},st,{SW:st.SW*k,A:st.A*k,FW:st.FW*k,Lf:st.Lf*k,Ls:st.Ls*k,Lb:st.Lb*k,Vg:st.Vg*k,GLOW:st.GLOW*k});
+function lockupHTML(st,id,targetWM,opts){opts=opts||{};const k=targetWM/st.FZ;const s2=Object.assign({},st,{SW:st.SW*k,A:st.A*k,FW:st.FW*k,Lf:st.Lf*k,Ls:st.Ls*k,Lb:st.Lb*k,Vg:st.Vg*k,GLOW:st.GLOW*k});
   const p=torchParts(s2,id,0);const torch=`<svg viewBox="${p.viewBox}" style="height:${p.totalH.toFixed(1)}px;width:${p.width.toFixed(1)}px;overflow:visible;display:block;flex:0 0 auto">${p.inner}</svg>`;
   const fam=st.font||'Fraunces',pal=palOf(st),w1=st.cWord1||st.cDust||'#FCEBD6',w2=st.cWord2||st.cDust||'#FCEBD6';
-  let wmStyle=`font-family:'${fam}',serif;font-optical-sizing:none;display:flex;flex-direction:column;font-size:${targetWM}px;line-height:${(st.LH*k).toFixed(1)}px;letter-spacing:-.02em;font-variation-settings:'opsz' ${st.opsz},'wght' ${st.wght},'SOFT' ${st.SOFT},'WONK' ${st.WONK};font-style:${st.italic?'italic':'normal'};`;
+  const tglow=opts.textGlow?`filter:drop-shadow(0 0 ${(Math.max(2,st.GLOW)*k).toFixed(1)}px ${st.textGrad?pal.gold:w1});`:'';
+  let wmStyle=`font-family:'${fam}',serif;font-optical-sizing:none;display:flex;flex-direction:column;font-size:${targetWM}px;line-height:${(st.LH*k).toFixed(1)}px;letter-spacing:-.02em;font-variation-settings:'opsz' ${st.opsz},'wght' ${st.wght},'SOFT' ${st.SOFT},'WONK' ${st.WONK};font-style:${st.italic?'italic':'normal'};${tglow}`;
   let s1='',s2c='';
   if(st.textGrad)wmStyle+=`background:linear-gradient(${st.textGradAngle||0}deg,${pal.human},${pal.machine},${pal.gold});-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;`;
   else {s1=`color:${w1};-webkit-text-fill-color:${w1}`;s2c=`color:${w2};-webkit-text-fill-color:${w2}`;}
@@ -228,7 +233,7 @@ function gradState(st){return Object.assign({},st,{grad:true,textGrad:true});}
 function monoState(st,c){return Object.assign({},st,{cHuman:c,cMachine:c,cGold:c,cWord1:c,cWord2:c,grad:false,textGrad:false});}
 
 /* readout + gallery */
-function currentState(){return Object.assign({},P,{grad:$('gradToggle').checked,glow:$('glowToggle').checked,textGrad:$('textGradToggle').checked});}
+function currentState(){return Object.assign({},P,{grad:$('gradToggle').checked,glow:$('glowToggle').checked,textGrad:$('textGradToggle').checked,textGlow:$('textGlowToggle').checked});}
 function update(){const s=currentState();const g=torchParts(s,'ro',0);const dR=g.flameW-RW;
   $('readout').innerHTML=`<span class="chip"><b>R</b> ${RW.toFixed(0)}</span><span class="chip ${Math.abs(dR)<=1.5?'ok':'off'}">flame ${g.flameW.toFixed(0)} ${Math.abs(dR)<=1.5?'✓':'Δ'+(dR>0?'+':'')+dR.toFixed(0)}</span><span class="chip"><b>vgap</b> ${(+P.Vg).toFixed(1)}</span><span class="chip ${Math.abs(P.Vg-textLineGap())<=0.6?'ok':''}"><b>line gap</b> ${textLineGap().toFixed(1)}</span><span class="chip"><b>H</b> ${g.totalH.toFixed(0)}</span>`;
   renderGallery();}
@@ -237,16 +242,20 @@ const TILES=[
   {k:'logo-mono',label:'Logo · mono',lite:false},
   {k:'logo-grad',label:'Logo · gradient',lite:false},
   {k:'logo-lite',label:'Logo · on light',lite:true},
+  {k:'logo-icongrad',label:'Logo · icon gradient only',lite:false},
+  {k:'logo-textgrad',label:'Logo · text gradient only',lite:false},
   {k:'icons',label:'Icons · colour + mono',lite:false},
   {k:'icons-grad',label:'Icons · gradient',lite:false},
   {k:'torch-color',label:'Torch · colour',lite:false},
   {k:'torch-grad',label:'Torch · gradient',lite:false},
 ];
 function tileInner(k,big){const cs=currentState();GID++;const wm=big?96:46;const th=big?180:74;const iw=big?70:30;const id=k+(big?'_z':'');
-  if(k==='logo-live')return lockupHTML(cs,id,wm);
+  if(k==='logo-live')return lockupHTML(cs,id,wm,{textGlow:cs.textGlow});
   if(k==='logo-mono')return lockupHTML(monoState(cs,cs.cDust),id,wm);
   if(k==='logo-grad')return lockupHTML(gradState(cs),id,wm);
   if(k==='logo-lite')return lockupHTML(monoState(cs,'#190613'),id,wm);
+  if(k==='logo-icongrad')return lockupHTML(Object.assign({},cs,{grad:true,textGrad:false}),id,wm);
+  if(k==='logo-textgrad')return lockupHTML(Object.assign({},cs,{grad:false,textGrad:true}),id,wm);
   if(k==='icons')return iconsRow(forceState(cs),'force',iw)+iconsRow(cs,cs.cDust,iw);
   if(k==='icons-grad')return iconsRow(cs,'gradient',iw);
   if(k==='torch-color')return torchHTML(forceState(cs),id,th);
@@ -291,11 +300,11 @@ function renderColors(elId,arr,kind){$(elId).innerHTML=arr.map(c=>`<div class="s
 function renderAllControls(){renderSliders('t_size',G_SIZE,'size');renderSliders('t_space',G_SPACE,'space');renderSliders('t_glow',G_GLOW,'space');renderSliders('t_type',G_TYPE,'type');renderSliders('t_icongrad',G_ICONGRAD,'icongrad');renderSliders('t_textgrad',G_TEXTGRAD,'textgrad');renderColors('t_iconcolors',ICON_COLORS,'icon');renderColors('t_textcolors',TEXT_COLORS,'text');renderColors('t_surface',SURFACE_COLORS,'surface');$('fontSelect').value=P.font;syncLinkedGap();}
 
 /* defaults & reset */
-function setDefaults(){const base={FZ:72,LH:63,opsz:144,wght:400,SOFT:0,WONK:0,italic:false,GLOW:4,GAP:24,font:'Fraunces',cHuman:'#FF5A1F',cMachine:'#22D3EE',cGold:'#FFC23D',cFlash:'#FFE7A3',cGround:'#190613',cDust:'#FCEBD6',gradAngle:0,gradMid:0.5,cWord1:'#FCEBD6',cWord2:'#FCEBD6',textGradAngle:0,grad:false,glow:false,textGrad:false};
+function setDefaults(){const base={FZ:72,LH:63,opsz:144,wght:400,SOFT:0,WONK:0,italic:false,GLOW:4,GAP:24,font:'Fraunces',cHuman:'#FF5A1F',cMachine:'#22D3EE',cGold:'#FFC23D',cFlash:'#FFE7A3',cGround:'#190613',cDust:'#FCEBD6',gradAngle:0,gradMid:0.5,cWord1:'#FCEBD6',cWord2:'#FCEBD6',textGradAngle:0,grad:false,glow:false,textGrad:false,textGlow:false};
   P.font=base.font;P.wght=base.wght;P.FZ=base.FZ;recomputeMetrics();
   DEF=Object.assign({SW:+(CAP*0.115).toFixed(1),A:+(RW*0.16).toFixed(1),FW:Math.round(RW),Lf:Math.round(CAP*0.92),Ls:Math.round(CAP*0.80),Lb:Math.round(CAP*0.55),Vg:+(CAP*0.10).toFixed(1)},base);P=Object.assign({},DEF);}
-const TAB_KEYS={shape:['SW','A','FW','Lf','Ls','Lb','Vg','GAP','GLOW','glow'],type:['FZ','LH','opsz','wght','SOFT','WONK','italic','font'],colour:['cHuman','cMachine','cGold','cFlash','cGround','cDust','gradAngle','gradMid','cWord1','cWord2','textGradAngle','grad','textGrad']};
-function syncToggles(){$('gradToggle').checked=!!P.grad;$('glowToggle').checked=!!P.glow;$('textGradToggle').checked=!!P.textGrad;$('italicToggle').checked=!!P.italic;}
+const TAB_KEYS={shape:['SW','A','FW','Lf','Ls','Lb','Vg','GAP'],type:['FZ','LH','opsz','wght','SOFT','WONK','italic','font'],colour:['cHuman','cMachine','cGold','cFlash','cGround','cDust','gradAngle','gradMid','cWord1','cWord2','textGradAngle','grad','textGrad','GLOW','glow','textGlow']};
+function syncToggles(){$('gradToggle').checked=!!P.grad;$('glowToggle').checked=!!P.glow;$('textGradToggle').checked=!!P.textGrad;$('textGlowToggle').checked=!!P.textGlow;$('italicToggle').checked=!!P.italic;}
 function resetTab(tab){TAB_KEYS[tab].forEach(k=>P[k]=DEF[k]);syncToggles();if(tab==='type')ensureFont(P.font).then(redrawAll);else redrawAll();pushHistory();}
 function redrawAll(){recomputeMetrics();renderAllControls();applyPalette();drawLetters();update();}
 
@@ -336,16 +345,21 @@ function logoSVGString(st){const L=layoutFor(st),pal=palOf(st),p=torchParts(st,'
   const w1=st.cWord1||st.cDust||'#FCEBD6',w2=st.cWord2||st.cDust||'#FCEBD6';let tdefs='',f1=w1,f2=w2;
   if(st.textGrad){const ty=L.baseY1-L.capPx,th=L.baseY2-ty,[ax1,ay1,ax2,ay2]=gradEndpoints(L.textW,th,st.textGradAngle).map(Number);tdefs=`<linearGradient id="twg" gradientUnits="userSpaceOnUse" x1="${(L.textX+ax1).toFixed(1)}" y1="${(ty+ay1).toFixed(1)}" x2="${(L.textX+ax2).toFixed(1)}" y2="${(ty+ay2).toFixed(1)}"><stop offset="0" stop-color="${pal.human}"/><stop offset="0.5" stop-color="${pal.machine}"/><stop offset="1" stop-color="${pal.gold}"/></linearGradient>`;f1=f2='url(#twg)';}
   const wmStyle=`font-family:'${fam}',serif;font-optical-sizing:none;font-variation-settings:'opsz' ${st.opsz},'wght' ${st.wght},'SOFT' ${st.SOFT},'WONK' ${st.WONK};font-style:${st.italic?'italic':'normal'};letter-spacing:-0.02em`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${L.W.toFixed(1)}" height="${L.H.toFixed(1)}" viewBox="0 0 ${L.W.toFixed(1)} ${L.H.toFixed(1)}"><style>@import url('https://fonts.googleapis.com/css2?family=${q}&amp;display=swap');</style><defs>${tdefs}</defs><g transform="translate(${L.torchX.toFixed(1)},${L.torchY.toFixed(1)})">${p.inner}</g><text x="${L.textX.toFixed(1)}" y="${L.baseY1.toFixed(1)}" fill="${f1}" font-size="${st.FZ}" style="${wmStyle}">Resonance</text><text x="${L.textX.toFixed(1)}" y="${L.baseY2.toFixed(1)}" fill="${f2}" font-size="${st.FZ}" style="${wmStyle}">Labs</text></svg>`;}
+  let glowDef='',glowAttr='';
+  if(st.textGlow){glowDef=`<filter id="tgl" x="-60%" y="-60%" width="220%" height="220%"><feDropShadow dx="0" dy="0" stdDeviation="${Math.max(2,st.GLOW)}" flood-color="${st.textGrad?pal.gold:w1}" flood-opacity="0.95"/></filter>`;glowAttr=' filter="url(#tgl)"';}
+  const bg=st._light?`<rect x="0" y="0" width="${L.W.toFixed(1)}" height="${L.H.toFixed(1)}" fill="#FCEBD6"/>`:'';
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${L.W.toFixed(1)}" height="${L.H.toFixed(1)}" viewBox="0 0 ${L.W.toFixed(1)} ${L.H.toFixed(1)}"><style>@import url('https://fonts.googleapis.com/css2?family=${q}&amp;display=swap');</style><defs>${tdefs}${glowDef}</defs>${bg}<g transform="translate(${L.torchX.toFixed(1)},${L.torchY.toFixed(1)})">${p.inner}</g><text x="${L.textX.toFixed(1)}" y="${L.baseY1.toFixed(1)}" fill="${f1}" font-size="${st.FZ}" style="${wmStyle}"${glowAttr}>Resonance</text><text x="${L.textX.toFixed(1)}" y="${L.baseY2.toFixed(1)}" fill="${f2}" font-size="${st.FZ}" style="${wmStyle}"${glowAttr}>Labs</text></svg>`;}
 function drawTorchCtx(ctx,st,g){const pal=palOf(st);ctx.lineCap='round';ctx.lineJoin='round';ctx.lineWidth=st.SW;let grad=null;
   if(st.grad){const[x1,y1,x2,y2]=gradEndpoints(g.width,g.totalH,st.gradAngle).map(Number);grad=ctx.createLinearGradient(x1,y1,x2,y2);grad.addColorStop(0,pal.human);grad.addColorStop(st.gradMid==null?0.5:st.gradMid,pal.machine);grad.addColorStop(1,pal.gold);}
   function sp(d,color){const pth=new Path2D(d);ctx.strokeStyle=st.grad?grad:color;if(st.glow){ctx.shadowBlur=st.GLOW;ctx.shadowColor=st.grad?pal.gold:color;ctx.stroke(pth);ctx.stroke(pth);}ctx.shadowBlur=0;ctx.stroke(pth);}
   g.flame.forEach(d=>sp(d,pal.gold));g.stem.forEach(s2=>sp(`M${s2.x.toFixed(2)},${s2.y1.toFixed(2)} L${s2.x.toFixed(2)},${s2.y2.toFixed(2)}`,pal.machine));sp(g.base,pal.human);}
 function logoCanvas(st){const scale=3,L=layoutFor(st),pal=palOf(st);const cv=document.createElement('canvas');cv.width=Math.ceil(L.W*scale);cv.height=Math.ceil(L.H*scale);const ctx=cv.getContext('2d');ctx.scale(scale,scale);
+  if(st._light){ctx.fillStyle='#FCEBD6';ctx.fillRect(0,0,L.W,L.H);}
   ctx.save();ctx.translate(L.torchX,L.torchY);drawTorchCtx(ctx,st,L.g);ctx.restore();
   ctx.textBaseline='alphabetic';ctx.font=`${st.italic?'italic ':''}${st.wght} ${st.FZ}px '${st.font||'Fraunces'}'`;const w1=st.cWord1||st.cDust||'#FCEBD6',w2=st.cWord2||st.cDust||'#FCEBD6';
-  if(st.textGrad){const ty=L.baseY1-L.capPx,th=L.baseY2-ty,[ax1,ay1,ax2,ay2]=gradEndpoints(L.textW,th,st.textGradAngle).map(Number);const tg=ctx.createLinearGradient(L.textX+ax1,ty+ay1,L.textX+ax2,ty+ay2);tg.addColorStop(0,pal.human);tg.addColorStop(0.5,pal.machine);tg.addColorStop(1,pal.gold);ctx.fillStyle=tg;ctx.fillText('Resonance',L.textX,L.baseY1);ctx.fillText('Labs',L.textX,L.baseY2);}
-  else{ctx.fillStyle=w1;ctx.fillText('Resonance',L.textX,L.baseY1);ctx.fillStyle=w2;ctx.fillText('Labs',L.textX,L.baseY2);}return cv;}
+  const tg2=()=>{if(st.textGlow){ctx.shadowBlur=Math.max(2,st.GLOW);ctx.shadowColor=st.textGrad?pal.gold:w1;}};
+  if(st.textGrad){const ty=L.baseY1-L.capPx,th=L.baseY2-ty,[ax1,ay1,ax2,ay2]=gradEndpoints(L.textW,th,st.textGradAngle).map(Number);const tg=ctx.createLinearGradient(L.textX+ax1,ty+ay1,L.textX+ax2,ty+ay2);tg.addColorStop(0,pal.human);tg.addColorStop(0.5,pal.machine);tg.addColorStop(1,pal.gold);ctx.fillStyle=tg;tg2();ctx.fillText('Resonance',L.textX,L.baseY1);ctx.fillText('Labs',L.textX,L.baseY2);ctx.shadowBlur=0;}
+  else{tg2();ctx.fillStyle=w1;ctx.fillText('Resonance',L.textX,L.baseY1);ctx.fillStyle=w2;ctx.fillText('Labs',L.textX,L.baseY2);ctx.shadowBlur=0;}return cv;}
 function exportSVG(st,name){downloadBlob(new Blob([logoSVGString(st)],{type:'image/svg+xml'}),(name||'resonance-labs')+'.svg');}
 function exportPNG(st,name){logoCanvas(st).toBlob(b=>downloadBlob(b,(name||'resonance-labs')+'.png'),'image/png');}
 /* torch-only file svg + canvas */
@@ -368,14 +382,41 @@ function makeZip(files){const enc=new TextEncoder(),chunks=[],central=[];let off
   let csize=0;central.forEach(c=>csize+=c.length);const eo=[];_u32(eo,0x06054b50);_u16(eo,0);_u16(eo,0);_u16(eo,files.length);_u16(eo,files.length);_u32(eo,csize);_u32(eo,offset);_u16(eo,0);
   return new Blob([...chunks,...central,new Uint8Array(eo)],{type:'application/zip'});}
 function canvasBytes(cv){return new Promise(res=>cv.toBlob(b=>b.arrayBuffer().then(ab=>res(new Uint8Array(ab))),'image/png'));}
+/* icon row (3 icons) standalone svg + canvas */
+function iconsRowSVG(st,mode){const ord=['breath','signal','resonance'],items=ord.map(w=>({w,p:iconSVGInner(w,st,mode)}));const maxH=Math.max(...items.map(i=>i.p.height)),sp=items[0].p.width*0.32;let x=0,body='';
+  items.forEach(it=>{const yo=(maxH-it.p.height)/2;body+=`<g transform="translate(${x.toFixed(2)},${yo.toFixed(2)})">${it.p.svg}</g>`;x+=it.p.width+sp;});const totalW=x-sp;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${totalW.toFixed(1)}" height="${maxH.toFixed(1)}" viewBox="0 0 ${totalW.toFixed(1)} ${maxH.toFixed(1)}">${body}</svg>`;}
+function iconsRowCanvas(st,mode){const ord=['breath','signal','resonance'],scale=6,pal=palOf(st),items=ord.map(w=>({w,G:iconGeom(w,st)}));const maxH=Math.max(...items.map(i=>i.G.height)),sp=items[0].G.width*0.32;
+  let totalW=items.reduce((a,i)=>a+i.G.width,0)+sp*(items.length-1);const cv=document.createElement('canvas');cv.width=Math.ceil(totalW*scale);cv.height=Math.ceil(maxH*scale);const ctx=cv.getContext('2d');ctx.scale(scale,scale);ctx.lineCap='round';ctx.lineJoin='round';ctx.lineWidth=st.SW;let x=0;
+  items.forEach(it=>{const yo=(maxH-it.G.height)/2;ctx.save();ctx.translate(x,yo);let stroke;if(mode&&mode[0]==='#')stroke=mode;else if(mode==='gradient'){stroke=ctx.createLinearGradient(0,0,it.G.width,0);stroke.addColorStop(0,pal.human);stroke.addColorStop(0.5,pal.machine);stroke.addColorStop(1,pal.gold);}else stroke=it.w==='breath'?pal.human:it.w==='signal'?pal.machine:pal.gold;ctx.strokeStyle=stroke;it.G.paths.forEach(d=>ctx.stroke(new Path2D(d)));ctx.restore();x+=it.G.width+sp;});return cv;}
+/* every gallery preview, as a spec we can render to svg+png and describe in a manifest */
+function previewSpecs(cs){const ink='#190613';
+  return [
+    {file:'logo-live',type:'logo',state:Object.assign({},cs)},
+    {file:'logo-mono',type:'logo',state:Object.assign(monoState(cs,cs.cDust),{textGlow:false})},
+    {file:'logo-gradient',type:'logo',state:Object.assign(gradState(cs),{textGlow:false})},
+    {file:'logo-on-light',type:'logo',state:Object.assign(monoState(cs,ink),{textGlow:false,_light:true})},
+    {file:'logo-icon-gradient',type:'logo',state:Object.assign({},cs,{grad:true,textGrad:false,textGlow:false})},
+    {file:'logo-text-gradient',type:'logo',state:Object.assign({},cs,{grad:false,textGrad:true,textGlow:false})},
+    {file:'icons-colour',type:'iconsrow',mode:'force',state:forceState(cs)},
+    {file:'icons-mono',type:'iconsrow',mode:cs.cDust,state:Object.assign({},cs)},
+    {file:'icons-gradient',type:'iconsrow',mode:'gradient',state:Object.assign({},cs)},
+    {file:'torch-colour',type:'torch',state:forceState(cs)},
+    {file:'torch-mono',type:'torch',state:monoState(cs,cs.cDust)},
+    {file:'torch-gradient',type:'torch',state:gradState(cs)},
+  ];}
 async function exportPack(st,name){const enc=new TextEncoder(),files=[];name=name||'resonance-labs';
   files.push({name:'settings.json',bytes:enc.encode(JSON.stringify(st,null,2))});
-  files.push({name:'logo/logo.svg',bytes:enc.encode(logoSVGString(st))});
-  files.push({name:'logo/logo.png',bytes:await canvasBytes(logoCanvas(st))});
-  const icons=['breath','signal','resonance'],variants=[['black','#000000'],['white','#ffffff'],['color',null]];
-  for(const w of icons)for(const [tag,col] of variants){files.push({name:`icons/${w}-${tag}.svg`,bytes:enc.encode(iconFileSVG(w,st,col||'force'))});files.push({name:`icons/${w}-${tag}.png`,bytes:await canvasBytes(iconCanvas(w,st,col||'force'))});}
-  const torchV=[['black',monoState(st,'#000000')],['white',monoState(st,'#ffffff')],['color',forceState(st)],['gradient',gradState(st)]];
-  for(const [tag,ts] of torchV){files.push({name:`torch/torch-${tag}.svg`,bytes:enc.encode(torchFileSVG(ts))});files.push({name:`torch/torch-${tag}.png`,bytes:await canvasBytes(torchCanvas(ts))});}
+  const specs=previewSpecs(st);
+  files.push({name:'manifest.json',bytes:enc.encode(JSON.stringify(specs.map(s=>({file:'previews/'+s.file,type:s.type,mode:s.mode||null,state:s.state})),null,2))});
+  for(const s of specs){let svg,cv;
+    if(s.type==='logo'){svg=logoSVGString(s.state);cv=logoCanvas(s.state);}
+    else if(s.type==='torch'){svg=torchFileSVG(s.state);cv=torchCanvas(s.state);}
+    else {svg=iconsRowSVG(s.state,s.mode);cv=iconsRowCanvas(s.state,s.mode);}
+    files.push({name:`previews/${s.file}.svg`,bytes:enc.encode(svg)});
+    files.push({name:`previews/${s.file}.png`,bytes:await canvasBytes(cv)});}
+  const icons=['breath','signal','resonance'],variants=[['black','#000000'],['white','#ffffff'],['color','force']];
+  for(const w of icons)for(const [tag,col] of variants){files.push({name:`icons/${w}-${tag}.svg`,bytes:enc.encode(iconFileSVG(w,st,col))});files.push({name:`icons/${w}-${tag}.png`,bytes:await canvasBytes(iconCanvas(w,st,col))});}
   downloadBlob(makeZip(files),name+'-pack.zip');}
 function importSettings(file){const r=new FileReader();r.onload=()=>{try{applyState(JSON.parse(r.result));pushHistory();}catch(e){alert('Invalid settings file');}};r.readAsText(file);}
 
@@ -397,7 +438,9 @@ document.fonts.load("400 1000px Fraunces").then(()=>document.fonts.ready).then((
   $('italicToggle').addEventListener('change',e=>{P.italic=e.target.checked;drawLetters();update();pushHistory();});
   $('linkGap').addEventListener('change',()=>{syncLinkedGap();update();pushHistory();});
   $('fontSelect').addEventListener('change',e=>setFont(e.target.value));
+  $('textGlowToggle').addEventListener('change',e=>{P.textGlow=e.target.checked;update();pushHistory();});
   $('snapR').addEventListener('click',()=>{P.FW=Math.round(RW);$('s_FW').value=P.FW;$('v_FW').textContent=P.FW;update();pushHistory();});
+  $('alignH').addEventListener('click',()=>{const th=torchGeometry(currentState()).totalH;const r=P.LH/P.FZ;const nf=Math.min(160,Math.max(28,Math.round(th/(capR+r))));P.FZ=nf;P.LH=Math.round(r*nf);recomputeMetrics();renderAllControls();drawLetters();update();pushHistory();});
   $('undoBtn').addEventListener('click',undo);
   $('resetAll').addEventListener('click',()=>{applyState(Object.assign({},DEF));pushHistory();});
   document.querySelectorAll('[data-resettab]').forEach(b=>b.addEventListener('click',()=>resetTab(b.dataset.resettab)));
