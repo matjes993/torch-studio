@@ -189,10 +189,10 @@ function torchGeometry(s){const {SW,A,FW,Lf,Ls,Lb,Vg}=s;let G=(FW-2*A-SW)/2;if(G
 function torchParts(s,id,guideRW){const g=torchGeometry(s),pal=palOf(s),{width,totalH}=g;let guides='';
   if(guideRW){const rx=g.cx-guideRW/2;guides+=`<rect x="${rx.toFixed(2)}" y="${g.tyF.toFixed(2)}" width="${guideRW.toFixed(2)}" height="${g.Lf.toFixed(2)}" fill="none" stroke="rgba(252,235,214,.35)" stroke-dasharray="3 3" stroke-width="1"/><line x1="0" y1="${g.tyF.toFixed(2)}" x2="${width}" y2="${g.tyF.toFixed(2)}" stroke="rgba(252,235,214,.18)"/><line x1="0" y1="${totalH.toFixed(2)}" x2="${width}" y2="${totalH.toFixed(2)}" stroke="rgba(252,235,214,.18)"/>`;}
   const flame=g.flame.map(d=>`<path d="${d}"/>`).join(''),stem=g.stem.map(s2=>`<line x1="${s2.x.toFixed(2)}" y1="${s2.y1.toFixed(2)}" x2="${s2.x.toFixed(2)}" y2="${s2.y2.toFixed(2)}"/>`).join(''),base=`<path d="${g.base}"/>`;
-  const tgId='tg_'+id,glId='gl_'+id;let defs='';
-  if(s.grad){const [x1,y1,x2,y2]=gradEndpoints(width,totalH,s.gradAngle),mid=(s.gradMid==null?0.5:s.gradMid);defs+=`<linearGradient id="${tgId}" gradientUnits="userSpaceOnUse" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"><stop offset="0" stop-color="${pal.human}"/><stop offset="${mid}" stop-color="${pal.machine}"/><stop offset="1" stop-color="${pal.gold}"/></linearGradient>`;}
+  const mono=s._iconMono,useGrad=s.grad&&!mono;const tgId='tg_'+id,glId='gl_'+id;let defs='';
+  if(useGrad){const [x1,y1,x2,y2]=gradEndpoints(width,totalH,s.gradAngle),mid=(s.gradMid==null?0.5:s.gradMid);defs+=`<linearGradient id="${tgId}" gradientUnits="userSpaceOnUse" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"><stop offset="0" stop-color="${pal.human}"/><stop offset="${mid}" stop-color="${pal.machine}"/><stop offset="1" stop-color="${pal.gold}"/></linearGradient>`;}
   if(s.glow)defs+=`<filter id="${glId}" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="${(+s.GLOW).toFixed(2)}" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/></feMerge></filter>`;
-  defs=defs?`<defs>${defs}</defs>`:'';const outer=s.grad?` stroke="url(#${tgId})"`:'';const fS=s.grad?'':` stroke="${pal.gold}"`,sS=s.grad?'':` stroke="${pal.machine}"`,bS=s.grad?'':` stroke="${pal.human}"`;
+  defs=defs?`<defs>${defs}</defs>`:'';const outer=useGrad?` stroke="url(#${tgId})"`:'';const fS=useGrad?'':` stroke="${mono||pal.gold}"`,sS=useGrad?'':` stroke="${mono||pal.machine}"`,bS=useGrad?'':` stroke="${mono||pal.human}"`;
   const icon=`<g fill="none"${outer} stroke-width="${s.SW}" stroke-linecap="round" stroke-linejoin="round"><g${fS}>${flame}</g><g${sS}>${stem}</g><g${bS}>${base}</g></g>`;
   const glow=s.glow?`<g filter="url(#${glId})">${icon}</g>`:'';
   return {inner:defs+guides+glow+icon,viewBox:`0 0 ${width.toFixed(2)} ${totalH.toFixed(2)}`,width,totalH,G:g.G,flameW:g.flameW};}
@@ -255,7 +255,7 @@ function tileInner(k,big){const cs=currentState();GID++;const wm=big?96:46;const
   if(k==='logo-grad')return lockupHTML(gradState(cs),id,wm);
   if(k==='logo-lite')return lockupHTML(monoState(cs,'#190613'),id,wm);
   if(k==='logo-icongrad')return lockupHTML(Object.assign({},cs,{grad:true,textGrad:false}),id,wm);
-  if(k==='logo-textgrad')return lockupHTML(Object.assign({},cs,{grad:false,textGrad:true}),id,wm);
+  if(k==='logo-textgrad')return lockupHTML(Object.assign({},cs,{grad:false,textGrad:true,_iconMono:cs.cDust}),id,wm);
   if(k==='icons')return iconsRow(forceState(cs),'force',iw)+iconsRow(cs,cs.cDust,iw);
   if(k==='icons-grad')return iconsRow(cs,'gradient',iw);
   if(k==='torch-color')return torchHTML(forceState(cs),id,th);
@@ -349,9 +349,9 @@ function logoSVGString(st){const L=layoutFor(st),pal=palOf(st),p=torchParts(st,'
   if(st.textGlow){glowDef=`<filter id="tgl" x="-60%" y="-60%" width="220%" height="220%"><feDropShadow dx="0" dy="0" stdDeviation="${Math.max(2,st.GLOW)}" flood-color="${st.textGrad?pal.gold:w1}" flood-opacity="0.95"/></filter>`;glowAttr=' filter="url(#tgl)"';}
   const bg=st._light?`<rect x="0" y="0" width="${L.W.toFixed(1)}" height="${L.H.toFixed(1)}" fill="#FCEBD6"/>`:'';
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${L.W.toFixed(1)}" height="${L.H.toFixed(1)}" viewBox="0 0 ${L.W.toFixed(1)} ${L.H.toFixed(1)}"><style>@import url('https://fonts.googleapis.com/css2?family=${q}&amp;display=swap');</style><defs>${tdefs}${glowDef}</defs>${bg}<g transform="translate(${L.torchX.toFixed(1)},${L.torchY.toFixed(1)})">${p.inner}</g><text x="${L.textX.toFixed(1)}" y="${L.baseY1.toFixed(1)}" fill="${f1}" font-size="${st.FZ}" style="${wmStyle}"${glowAttr}>Resonance</text><text x="${L.textX.toFixed(1)}" y="${L.baseY2.toFixed(1)}" fill="${f2}" font-size="${st.FZ}" style="${wmStyle}"${glowAttr}>Labs</text></svg>`;}
-function drawTorchCtx(ctx,st,g){const pal=palOf(st);ctx.lineCap='round';ctx.lineJoin='round';ctx.lineWidth=st.SW;let grad=null;
-  if(st.grad){const[x1,y1,x2,y2]=gradEndpoints(g.width,g.totalH,st.gradAngle).map(Number);grad=ctx.createLinearGradient(x1,y1,x2,y2);grad.addColorStop(0,pal.human);grad.addColorStop(st.gradMid==null?0.5:st.gradMid,pal.machine);grad.addColorStop(1,pal.gold);}
-  function sp(d,color){const pth=new Path2D(d);ctx.strokeStyle=st.grad?grad:color;if(st.glow){ctx.shadowBlur=st.GLOW;ctx.shadowColor=st.grad?pal.gold:color;ctx.stroke(pth);ctx.stroke(pth);}ctx.shadowBlur=0;ctx.stroke(pth);}
+function drawTorchCtx(ctx,st,g){const pal=palOf(st),mono=st._iconMono,useGrad=st.grad&&!mono;ctx.lineCap='round';ctx.lineJoin='round';ctx.lineWidth=st.SW;let grad=null;
+  if(useGrad){const[x1,y1,x2,y2]=gradEndpoints(g.width,g.totalH,st.gradAngle).map(Number);grad=ctx.createLinearGradient(x1,y1,x2,y2);grad.addColorStop(0,pal.human);grad.addColorStop(st.gradMid==null?0.5:st.gradMid,pal.machine);grad.addColorStop(1,pal.gold);}
+  function sp(d,color){const pth=new Path2D(d);ctx.strokeStyle=useGrad?grad:(mono||color);if(st.glow){ctx.shadowBlur=st.GLOW;ctx.shadowColor=useGrad?pal.gold:(mono||color);ctx.stroke(pth);ctx.stroke(pth);}ctx.shadowBlur=0;ctx.stroke(pth);}
   g.flame.forEach(d=>sp(d,pal.gold));g.stem.forEach(s2=>sp(`M${s2.x.toFixed(2)},${s2.y1.toFixed(2)} L${s2.x.toFixed(2)},${s2.y2.toFixed(2)}`,pal.machine));sp(g.base,pal.human);}
 function logoCanvas(st){const scale=3,L=layoutFor(st),pal=palOf(st);const cv=document.createElement('canvas');cv.width=Math.ceil(L.W*scale);cv.height=Math.ceil(L.H*scale);const ctx=cv.getContext('2d');ctx.scale(scale,scale);
   if(st._light){ctx.fillStyle='#FCEBD6';ctx.fillRect(0,0,L.W,L.H);}
@@ -397,7 +397,7 @@ function previewSpecs(cs){const ink='#190613';
     {file:'logo-gradient',type:'logo',state:Object.assign(gradState(cs),{textGlow:false})},
     {file:'logo-on-light',type:'logo',state:Object.assign(monoState(cs,ink),{textGlow:false,_light:true})},
     {file:'logo-icon-gradient',type:'logo',state:Object.assign({},cs,{grad:true,textGrad:false,textGlow:false})},
-    {file:'logo-text-gradient',type:'logo',state:Object.assign({},cs,{grad:false,textGrad:true,textGlow:false})},
+    {file:'logo-text-gradient',type:'logo',state:Object.assign({},cs,{grad:false,textGrad:true,textGlow:false,_iconMono:cs.cDust})},
     {file:'icons-colour',type:'iconsrow',mode:'force',state:forceState(cs)},
     {file:'icons-mono',type:'iconsrow',mode:cs.cDust,state:Object.assign({},cs)},
     {file:'icons-gradient',type:'iconsrow',mode:'gradient',state:Object.assign({},cs)},
