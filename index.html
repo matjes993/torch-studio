@@ -202,7 +202,7 @@ function iconGeom(which,s){const SW=s.SW,A=s.A,W=64,gap=A*1.7+SW,pad=SW/2+2,cy=(
   else paths=[htilde(pad,ccy-gap,W,A),htilde(pad,ccy,W,A),htilde(pad,ccy+gap,W,A)];
   return {paths,width:W+2*pad,height:boxH};}
 function iconSVGInner(which,s,mode){const G=iconGeom(which,s),pal=palOf(s);let defs='',stroke;
-  if(mode==='gradient'){const id='ig'+(GID++);defs=`<defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${pal.human}"/><stop offset="0.5" stop-color="${pal.machine}"/><stop offset="1" stop-color="${pal.gold}"/></linearGradient></defs>`;stroke=`url(#${id})`;}
+  if(mode==='gradient'){const id='ig'+(GID++);defs=`<defs><linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="${G.width.toFixed(2)}" y2="0"><stop offset="0" stop-color="${pal.human}"/><stop offset="0.5" stop-color="${pal.machine}"/><stop offset="1" stop-color="${pal.gold}"/></linearGradient></defs>`;stroke=`url(#${id})`;}
   else if(mode&&mode[0]==='#')stroke=mode;
   else stroke=which==='breath'?pal.human:which==='signal'?pal.machine:pal.gold;
   const body=G.paths.map(d=>`<path d="${d}" fill="none" stroke="${stroke}" stroke-width="${s.SW}" stroke-linecap="round" stroke-linejoin="round"/>`).join('');
