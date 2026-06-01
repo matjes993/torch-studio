@@ -109,6 +109,7 @@
       <div class="controls" id="t_size"></div>
       <div class="grouplabel">Spacing</div>
       <div class="controls" id="t_space"></div>
+      <div class="controls" style="margin-top:.9rem"><div class="ctl"><label>Icon height (% of text)<span class="val" id="v_iconRatio">100</span></label><input type="range" id="s_iconRatio" min="40" max="220" step="5" value="100"></div></div>
       <div class="row">
         <label class="toggle"><input type="checkbox" id="linkGap"> 🔗 lock vertical gap = text-line gap</label>
         <button id="snapR">⟳ flame width = R width</button>
@@ -177,6 +178,11 @@ function measure(ch,wght){_ctx.font=`${wght} 1000px '${P.font||'Fraunces'}'`;con
 function recomputeMetrics(){const r=measure('R',P.wght),x=measure('x',P.wght),t=measure('t',P.wght);capR=r.asc/1000;rwR=r.w/1000;xR=x.asc/1000;tR=t.asc/1000;twR=t.w/1000;CAP=capR*P.FZ;RW=rwR*P.FZ;XH=xR*P.FZ;TH=tR*P.FZ;TW=twR*P.FZ;}
 function applyPalette(){const r=document.documentElement.style;r.setProperty('--human',P.cHuman);r.setProperty('--machine',P.cMachine);r.setProperty('--gold',P.cGold);r.setProperty('--flash',P.cFlash);r.setProperty('--ground',P.cGround);r.setProperty('--dust',P.cDust);}
 function textLineGap(){return Math.max(0,P.LH-CAP);}
+function textHeightPx(){return CAP+P.LH;}                         // cap-top line1 → baseline line2
+function iconRatioNow(){const th=textHeightPx();return th>0?torchGeometry(currentState()).totalH/th*100:100;}
+function syncGeomSliders(){['SW','A','FW','Lf','Ls','Lb','Vg'].forEach(k=>{const el=$('s_'+k);if(el){el.value=P[k];const v=$('v_'+k);if(v)v.textContent=P[k];}});}
+function applyIconRatio(R){const th=textHeightPx(),cur=torchGeometry(currentState()).totalH;if(cur<=0||th<=0)return;const f=(R/100*th)/cur;['SW','A','FW','Lf','Ls','Lb','Vg'].forEach(k=>P[k]=+(P[k]*f).toFixed(2));}
+function updateIconRatio(){const el=$('s_iconRatio');if(!el)return;const v=Math.round(iconRatioNow());el.value=v;$('v_iconRatio').textContent=v;}
 function syncLinkedGap(){const linked=$('linkGap')&&$('linkGap').checked,sl=$('s_Vg'),lab=$('v_Vg');if(linked){const v=Math.min(30,+textLineGap().toFixed(1));P.Vg=v;if(sl){sl.value=v;sl.disabled=true;}if(lab)lab.textContent=v;}else if(sl)sl.disabled=false;}
 
 /* geometry */
@@ -236,7 +242,7 @@ function monoState(st,c){return Object.assign({},st,{cHuman:c,cMachine:c,cGold:c
 function currentState(){return Object.assign({},P,{grad:$('gradToggle').checked,glow:$('glowToggle').checked,textGrad:$('textGradToggle').checked,textGlow:$('textGlowToggle').checked});}
 function update(){const s=currentState();const g=torchParts(s,'ro',0);const dR=g.flameW-RW;
   $('readout').innerHTML=`<span class="chip"><b>R</b> ${RW.toFixed(0)}</span><span class="chip ${Math.abs(dR)<=1.5?'ok':'off'}">flame ${g.flameW.toFixed(0)} ${Math.abs(dR)<=1.5?'✓':'Δ'+(dR>0?'+':'')+dR.toFixed(0)}</span><span class="chip"><b>vgap</b> ${(+P.Vg).toFixed(1)}</span><span class="chip ${Math.abs(P.Vg-textLineGap())<=0.6?'ok':''}"><b>line gap</b> ${textLineGap().toFixed(1)}</span><span class="chip"><b>H</b> ${g.totalH.toFixed(0)}</span>`;
-  renderGallery();}
+  renderGallery();updateIconRatio();}
 const TILES=[
   {k:'logo-live',label:'Logo · live',lite:false},
   {k:'logo-mono',label:'Logo · mono',lite:false},
@@ -441,6 +447,8 @@ document.fonts.load("400 1000px Fraunces").then(()=>document.fonts.ready).then((
   $('textGlowToggle').addEventListener('change',e=>{P.textGlow=e.target.checked;update();pushHistory();});
   $('snapR').addEventListener('click',()=>{P.FW=Math.round(RW);$('s_FW').value=P.FW;$('v_FW').textContent=P.FW;update();pushHistory();});
   $('alignH').addEventListener('click',()=>{const th=torchGeometry(currentState()).totalH;const r=P.LH/P.FZ;const nf=Math.min(160,Math.max(28,Math.round(th/(capR+r))));P.FZ=nf;P.LH=Math.round(r*nf);recomputeMetrics();renderAllControls();drawLetters();update();pushHistory();});
+  $('s_iconRatio').addEventListener('input',e=>{applyIconRatio(parseFloat(e.target.value));syncGeomSliders();update();});
+  $('s_iconRatio').addEventListener('change',pushHistory);
   $('undoBtn').addEventListener('click',undo);
   $('resetAll').addEventListener('click',()=>{applyState(Object.assign({},DEF));pushHistory();});
   document.querySelectorAll('[data-resettab]').forEach(b=>b.addEventListener('click',()=>resetTab(b.dataset.resettab)));
