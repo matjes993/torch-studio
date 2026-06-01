@@ -344,38 +344,45 @@ function renderCompare(idx){const cont=$('compareArea');if(!idx.length){cont.inn
 /* export */
 function downloadBlob(b,fn){const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=fn;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1500);}
 function exportSettings(st,name){downloadBlob(new Blob([JSON.stringify(st,null,2)],{type:'application/json'}),(name||'resonance-labs')+'.settings.json');}
-function layoutFor(st){const capPx=measure('R',st.wght).asc/1000*st.FZ,g=torchGeometry(st);_ctx.font=`${st.italic?'italic ':''}${st.wght} ${st.FZ}px '${st.font||'Fraunces'}'`;
-  const textW=Math.max(_ctx.measureText('Resonance').width,_ctx.measureText('Labs').width),textH=capPx+st.LH*0.30,pad=Math.max(10,st.GLOW+6),blockH=Math.max(textH,g.totalH);
-  return {g,capPx,textW,torchX:pad,torchY:pad+(blockH-g.totalH)/2,textX:pad+g.width+st.GAP,baseY1:pad+(blockH-textH)/2+capPx,baseY2:pad+(blockH-textH)/2+capPx+st.LH,W:pad+g.width+st.GAP+textW+pad,H:blockH+2*pad};}
-function logoSVGString(st){const L=layoutFor(st),pal=palOf(st),p=torchParts(st,'exp',0);const fam=st.font||'Fraunces',q=fontCssQuery(fam)||(encodeURIComponent(fam).replace(/%20/g,'+')+':ital,wght@0,400;0,700;1,400');
+function layoutFor(st){const g=torchGeometry(st);_ctx.font=`${st.italic?'italic ':''}${st.wght} ${st.FZ}px '${st.font||'Fraunces'}'`;
+  const m1=_ctx.measureText('Resonance'),m2=_ctx.measureText('Labs');
+  const asc=Math.max(m1.actualBoundingBoxAscent||st.FZ*0.7,m2.actualBoundingBoxAscent||st.FZ*0.7);
+  const desc=Math.max(m1.actualBoundingBoxDescent||0,m2.actualBoundingBoxDescent||0,st.FZ*0.06);
+  const textW=Math.max(m1.width,m2.width),textH=asc+st.LH+desc,pad=Math.max(14,st.GLOW+10),blockH=Math.max(textH,g.totalH),top=pad+(blockH-textH)/2;
+  return {g,capPx:asc,textW,torchX:pad,torchY:pad+(blockH-g.totalH)/2,textX:pad+g.width+st.GAP,baseY1:top+asc,baseY2:top+asc+st.LH,W:pad+g.width+st.GAP+textW+pad,H:blockH+2*pad};}
+
+/* embed the webfont as base64 @font-face so exported SVGs are self-contained (render anywhere) */
+let _faceCache={};
+function _b64(buf){let s='';const b=new Uint8Array(buf),C=8192;for(let i=0;i<b.length;i+=C)s+=String.fromCharCode.apply(null,b.subarray(i,i+C));return btoa(s);}
+async function embeddedFontCSS(name){if(_faceCache[name]!==undefined)return _faceCache[name];
+  try{const q=fontCssQuery(name)||(encodeURIComponent(name).replace(/%20/g,'+')+':ital,wght@0,400;0,700;1,400');
+    const css=await (await fetch('https://fonts.googleapis.com/css2?family='+q+'&display=swap')).text();
+    const faces=css.match(/@font-face\s*{[^}]*}/g)||[];let out='';
+    for(const f of faces){const um=f.match(/url\((https:\/\/[^)]+\.woff2)\)/);if(!um)continue;const buf=await (await fetch(um[1])).arrayBuffer();out+=f.replace(/url\([^)]+\)/,`url(data:font/woff2;base64,${_b64(buf)})`)+'\n';}
+    _faceCache[name]=out;return out;}catch(e){_faceCache[name]='';return '';}}
+function svgToCanvas(svg,scale){return new Promise((res,rej)=>{const wm=svg.match(/width="([\d.]+)"/),hm=svg.match(/height="([\d.]+)"/);const w=+wm[1],h=+hm[1];
+  const url=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'})),img=new Image();
+  img.onload=()=>{const cv=document.createElement('canvas');cv.width=Math.max(1,Math.round(w*scale));cv.height=Math.max(1,Math.round(h*scale));cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);URL.revokeObjectURL(url);res(cv);};
+  img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error('svg rasterize failed'));};img.src=url;});}
+function canvasBytes(cv){return new Promise(res=>cv.toBlob(b=>b.arrayBuffer().then(ab=>res(new Uint8Array(ab))),'image/png'));}
+async function svgPngBytes(svg,scale){return canvasBytes(await svgToCanvas(svg,scale));}
+
+function logoSVGString(st,faceCSS){const L=layoutFor(st),pal=palOf(st),p=torchParts(st,'exp'+(GID++),0);const fam=st.font||'Fraunces';
+  const fontCSS=faceCSS?`<style>${faceCSS}</style>`:`<style>@import url('https://fonts.googleapis.com/css2?family=${fontCssQuery(fam)||'Fraunces'}&amp;display=swap');</style>`;
   const w1=st.cWord1||st.cDust||'#FCEBD6',w2=st.cWord2||st.cDust||'#FCEBD6';let tdefs='',f1=w1,f2=w2;
   if(st.textGrad){const ty=L.baseY1-L.capPx,th=L.baseY2-ty,[ax1,ay1,ax2,ay2]=gradEndpoints(L.textW,th,st.textGradAngle).map(Number);tdefs=`<linearGradient id="twg" gradientUnits="userSpaceOnUse" x1="${(L.textX+ax1).toFixed(1)}" y1="${(ty+ay1).toFixed(1)}" x2="${(L.textX+ax2).toFixed(1)}" y2="${(ty+ay2).toFixed(1)}"><stop offset="0" stop-color="${pal.human}"/><stop offset="0.5" stop-color="${pal.machine}"/><stop offset="1" stop-color="${pal.gold}"/></linearGradient>`;f1=f2='url(#twg)';}
   const wmStyle=`font-family:'${fam}',serif;font-optical-sizing:none;font-variation-settings:'opsz' ${st.opsz},'wght' ${st.wght},'SOFT' ${st.SOFT},'WONK' ${st.WONK};font-style:${st.italic?'italic':'normal'};letter-spacing:-0.02em`;
   let glowDef='',glowAttr='';
   if(st.textGlow){glowDef=`<filter id="tgl" x="-60%" y="-60%" width="220%" height="220%"><feDropShadow dx="0" dy="0" stdDeviation="${Math.max(2,st.GLOW)}" flood-color="${st.textGrad?pal.gold:w1}" flood-opacity="0.95"/></filter>`;glowAttr=' filter="url(#tgl)"';}
   const bg=st._light?`<rect x="0" y="0" width="${L.W.toFixed(1)}" height="${L.H.toFixed(1)}" fill="#FCEBD6"/>`:'';
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${L.W.toFixed(1)}" height="${L.H.toFixed(1)}" viewBox="0 0 ${L.W.toFixed(1)} ${L.H.toFixed(1)}"><style>@import url('https://fonts.googleapis.com/css2?family=${q}&amp;display=swap');</style><defs>${tdefs}${glowDef}</defs>${bg}<g transform="translate(${L.torchX.toFixed(1)},${L.torchY.toFixed(1)})">${p.inner}</g><text x="${L.textX.toFixed(1)}" y="${L.baseY1.toFixed(1)}" fill="${f1}" font-size="${st.FZ}" style="${wmStyle}"${glowAttr}>Resonance</text><text x="${L.textX.toFixed(1)}" y="${L.baseY2.toFixed(1)}" fill="${f2}" font-size="${st.FZ}" style="${wmStyle}"${glowAttr}>Labs</text></svg>`;}
-function drawTorchCtx(ctx,st,g){const pal=palOf(st),mono=st._iconMono,useGrad=st.grad&&!mono;ctx.lineCap='round';ctx.lineJoin='round';ctx.lineWidth=st.SW;let grad=null;
-  if(useGrad){const[x1,y1,x2,y2]=gradEndpoints(g.width,g.totalH,st.gradAngle).map(Number);grad=ctx.createLinearGradient(x1,y1,x2,y2);grad.addColorStop(0,pal.human);grad.addColorStop(st.gradMid==null?0.5:st.gradMid,pal.machine);grad.addColorStop(1,pal.gold);}
-  function sp(d,color){const pth=new Path2D(d);ctx.strokeStyle=useGrad?grad:(mono||color);if(st.glow){ctx.shadowBlur=st.GLOW;ctx.shadowColor=useGrad?pal.gold:(mono||color);ctx.stroke(pth);ctx.stroke(pth);}ctx.shadowBlur=0;ctx.stroke(pth);}
-  g.flame.forEach(d=>sp(d,pal.gold));g.stem.forEach(s2=>sp(`M${s2.x.toFixed(2)},${s2.y1.toFixed(2)} L${s2.x.toFixed(2)},${s2.y2.toFixed(2)}`,pal.machine));sp(g.base,pal.human);}
-function logoCanvas(st){const scale=3,L=layoutFor(st),pal=palOf(st);const cv=document.createElement('canvas');cv.width=Math.ceil(L.W*scale);cv.height=Math.ceil(L.H*scale);const ctx=cv.getContext('2d');ctx.scale(scale,scale);
-  if(st._light){ctx.fillStyle='#FCEBD6';ctx.fillRect(0,0,L.W,L.H);}
-  ctx.save();ctx.translate(L.torchX,L.torchY);drawTorchCtx(ctx,st,L.g);ctx.restore();
-  ctx.textBaseline='alphabetic';ctx.font=`${st.italic?'italic ':''}${st.wght} ${st.FZ}px '${st.font||'Fraunces'}'`;const w1=st.cWord1||st.cDust||'#FCEBD6',w2=st.cWord2||st.cDust||'#FCEBD6';
-  const tg2=()=>{if(st.textGlow){ctx.shadowBlur=Math.max(2,st.GLOW);ctx.shadowColor=st.textGrad?pal.gold:w1;}};
-  if(st.textGrad){const ty=L.baseY1-L.capPx,th=L.baseY2-ty,[ax1,ay1,ax2,ay2]=gradEndpoints(L.textW,th,st.textGradAngle).map(Number);const tg=ctx.createLinearGradient(L.textX+ax1,ty+ay1,L.textX+ax2,ty+ay2);tg.addColorStop(0,pal.human);tg.addColorStop(0.5,pal.machine);tg.addColorStop(1,pal.gold);ctx.fillStyle=tg;tg2();ctx.fillText('Resonance',L.textX,L.baseY1);ctx.fillText('Labs',L.textX,L.baseY2);ctx.shadowBlur=0;}
-  else{tg2();ctx.fillStyle=w1;ctx.fillText('Resonance',L.textX,L.baseY1);ctx.fillStyle=w2;ctx.fillText('Labs',L.textX,L.baseY2);ctx.shadowBlur=0;}return cv;}
-function exportSVG(st,name){downloadBlob(new Blob([logoSVGString(st)],{type:'image/svg+xml'}),(name||'resonance-labs')+'.svg');}
-function exportPNG(st,name){logoCanvas(st).toBlob(b=>downloadBlob(b,(name||'resonance-labs')+'.png'),'image/png');}
-/* torch-only file svg + canvas */
-function torchFileSVG(st){const p=torchParts(st,'tf'+(GID++),0);return `<svg xmlns="http://www.w3.org/2000/svg" width="${p.width.toFixed(1)}" height="${p.totalH.toFixed(1)}" viewBox="${p.viewBox}">${p.inner}</svg>`;}
-function torchCanvas(st){const g=torchGeometry(st),scale=4,pad=Math.max(2,st.GLOW);const cv=document.createElement('canvas');cv.width=Math.ceil((g.width+pad*2)*scale);cv.height=Math.ceil((g.totalH+pad*2)*scale);const ctx=cv.getContext('2d');ctx.scale(scale,scale);ctx.translate(pad,pad);drawTorchCtx(ctx,st,g);return cv;}
-/* icon file svg + canvas */
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${L.W.toFixed(1)}" height="${L.H.toFixed(1)}" viewBox="0 0 ${L.W.toFixed(1)} ${L.H.toFixed(1)}">${fontCSS}<defs>${tdefs}${glowDef}</defs>${bg}<g transform="translate(${L.torchX.toFixed(1)},${L.torchY.toFixed(1)})">${p.inner}</g><text x="${L.textX.toFixed(1)}" y="${L.baseY1.toFixed(1)}" fill="${f1}" font-size="${st.FZ}" style="${wmStyle}"${glowAttr}>Resonance</text><text x="${L.textX.toFixed(1)}" y="${L.baseY2.toFixed(1)}" fill="${f2}" font-size="${st.FZ}" style="${wmStyle}"${glowAttr}>Labs</text></svg>`;}
+
+async function exportSVG(st,name){const f=await embeddedFontCSS(st.font);downloadBlob(new Blob([logoSVGString(st,f)],{type:'image/svg+xml'}),(name||'resonance-labs')+'.svg');}
+async function exportPNG(st,name){const f=await embeddedFontCSS(st.font);const cv=await svgToCanvas(logoSVGString(st,f),3);cv.toBlob(b=>downloadBlob(b,(name||'resonance-labs')+'.png'),'image/png');}
+/* torch-only file svg (padded so the glow isn't clipped) */
+function torchFileSVG(st){const p=torchParts(st,'tf'+(GID++),0),pad=st.glow?Math.max(2,st.GLOW*2.6):2,W=p.width+pad*2,H=p.totalH+pad*2;return `<svg xmlns="http://www.w3.org/2000/svg" width="${W.toFixed(1)}" height="${H.toFixed(1)}" viewBox="${(-pad).toFixed(1)} ${(-pad).toFixed(1)} ${W.toFixed(1)} ${H.toFixed(1)}">${p.inner}</svg>`;}
+/* icon file svg */
 function iconFileSVG(which,st,mode){const p=iconSVGInner(which,st,mode);return `<svg xmlns="http://www.w3.org/2000/svg" width="${p.width.toFixed(1)}" height="${p.height.toFixed(1)}" viewBox="0 0 ${p.width.toFixed(1)} ${p.height.toFixed(1)}">${p.svg}</svg>`;}
-function iconCanvas(which,st,mode){const G=iconGeom(which,st),pal=palOf(st),scale=6;const cv=document.createElement('canvas');cv.width=Math.ceil(G.width*scale);cv.height=Math.ceil(G.height*scale);const ctx=cv.getContext('2d');ctx.scale(scale,scale);ctx.lineCap='round';ctx.lineJoin='round';ctx.lineWidth=st.SW;
-  let stroke;if(mode&&mode[0]==='#')stroke=mode;else if(mode==='gradient'){stroke=ctx.createLinearGradient(0,0,G.width,0);stroke.addColorStop(0,pal.human);stroke.addColorStop(0.5,pal.machine);stroke.addColorStop(1,pal.gold);}else stroke=which==='breath'?pal.human:which==='signal'?pal.machine:pal.gold;
-  ctx.strokeStyle=stroke;G.paths.forEach(d=>ctx.stroke(new Path2D(d)));return cv;}
 /* ZIP (store, no compression) */
 const _CRC=(()=>{const t=[];for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
 function crc32(u8){let c=0xFFFFFFFF;for(let i=0;i<u8.length;i++)c=_CRC[(c^u8[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0;}
@@ -387,14 +394,10 @@ function makeZip(files){const enc=new TextEncoder(),chunks=[],central=[];let off
     central.push(new Uint8Array(ch),name);offset+=lhu.length+name.length+data.length;});
   let csize=0;central.forEach(c=>csize+=c.length);const eo=[];_u32(eo,0x06054b50);_u16(eo,0);_u16(eo,0);_u16(eo,files.length);_u16(eo,files.length);_u32(eo,csize);_u32(eo,offset);_u16(eo,0);
   return new Blob([...chunks,...central,new Uint8Array(eo)],{type:'application/zip'});}
-function canvasBytes(cv){return new Promise(res=>cv.toBlob(b=>b.arrayBuffer().then(ab=>res(new Uint8Array(ab))),'image/png'));}
-/* icon row (3 icons) standalone svg + canvas */
+/* icon row (3 icons) standalone svg */
 function iconsRowSVG(st,mode){const ord=['breath','signal','resonance'],items=ord.map(w=>({w,p:iconSVGInner(w,st,mode)}));const maxH=Math.max(...items.map(i=>i.p.height)),sp=items[0].p.width*0.32;let x=0,body='';
   items.forEach(it=>{const yo=(maxH-it.p.height)/2;body+=`<g transform="translate(${x.toFixed(2)},${yo.toFixed(2)})">${it.p.svg}</g>`;x+=it.p.width+sp;});const totalW=x-sp;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${totalW.toFixed(1)}" height="${maxH.toFixed(1)}" viewBox="0 0 ${totalW.toFixed(1)} ${maxH.toFixed(1)}">${body}</svg>`;}
-function iconsRowCanvas(st,mode){const ord=['breath','signal','resonance'],scale=6,pal=palOf(st),items=ord.map(w=>({w,G:iconGeom(w,st)}));const maxH=Math.max(...items.map(i=>i.G.height)),sp=items[0].G.width*0.32;
-  let totalW=items.reduce((a,i)=>a+i.G.width,0)+sp*(items.length-1);const cv=document.createElement('canvas');cv.width=Math.ceil(totalW*scale);cv.height=Math.ceil(maxH*scale);const ctx=cv.getContext('2d');ctx.scale(scale,scale);ctx.lineCap='round';ctx.lineJoin='round';ctx.lineWidth=st.SW;let x=0;
-  items.forEach(it=>{const yo=(maxH-it.G.height)/2;ctx.save();ctx.translate(x,yo);let stroke;if(mode&&mode[0]==='#')stroke=mode;else if(mode==='gradient'){stroke=ctx.createLinearGradient(0,0,it.G.width,0);stroke.addColorStop(0,pal.human);stroke.addColorStop(0.5,pal.machine);stroke.addColorStop(1,pal.gold);}else stroke=it.w==='breath'?pal.human:it.w==='signal'?pal.machine:pal.gold;ctx.strokeStyle=stroke;it.G.paths.forEach(d=>ctx.stroke(new Path2D(d)));ctx.restore();x+=it.G.width+sp;});return cv;}
 /* every gallery preview, as a spec we can render to svg+png and describe in a manifest */
 function previewSpecs(cs){const ink='#190613';
   return [
@@ -412,17 +415,18 @@ function previewSpecs(cs){const ink='#190613';
     {file:'torch-gradient',type:'torch',state:gradState(cs)},
   ];}
 async function exportPack(st,name){const enc=new TextEncoder(),files=[];name=name||'resonance-labs';
+  const face=await embeddedFontCSS(st.font);
   files.push({name:'settings.json',bytes:enc.encode(JSON.stringify(st,null,2))});
   const specs=previewSpecs(st);
   files.push({name:'manifest.json',bytes:enc.encode(JSON.stringify(specs.map(s=>({file:'previews/'+s.file,type:s.type,mode:s.mode||null,state:s.state})),null,2))});
-  for(const s of specs){let svg,cv;
-    if(s.type==='logo'){svg=logoSVGString(s.state);cv=logoCanvas(s.state);}
-    else if(s.type==='torch'){svg=torchFileSVG(s.state);cv=torchCanvas(s.state);}
-    else {svg=iconsRowSVG(s.state,s.mode);cv=iconsRowCanvas(s.state,s.mode);}
+  for(const s of specs){let svg;
+    if(s.type==='logo') svg=logoSVGString(s.state,face);
+    else if(s.type==='torch') svg=torchFileSVG(s.state);
+    else svg=iconsRowSVG(s.state,s.mode);
     files.push({name:`previews/${s.file}.svg`,bytes:enc.encode(svg)});
-    files.push({name:`previews/${s.file}.png`,bytes:await canvasBytes(cv)});}
+    files.push({name:`previews/${s.file}.png`,bytes:await svgPngBytes(svg, s.type==='logo'?3:5)});}
   const icons=['breath','signal','resonance'],variants=[['black','#000000'],['white','#ffffff'],['color','force']];
-  for(const w of icons)for(const [tag,col] of variants){files.push({name:`icons/${w}-${tag}.svg`,bytes:enc.encode(iconFileSVG(w,st,col))});files.push({name:`icons/${w}-${tag}.png`,bytes:await canvasBytes(iconCanvas(w,st,col))});}
+  for(const w of icons)for(const [tag,col] of variants){const isvg=iconFileSVG(w,st,col);files.push({name:`icons/${w}-${tag}.svg`,bytes:enc.encode(isvg)});files.push({name:`icons/${w}-${tag}.png`,bytes:await svgPngBytes(isvg,6)});}
   downloadBlob(makeZip(files),name+'-pack.zip');}
 function importSettings(file){const r=new FileReader();r.onload=()=>{try{applyState(JSON.parse(r.result));pushHistory();}catch(e){alert('Invalid settings file');}};r.readAsText(file);}
 
