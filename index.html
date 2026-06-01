@@ -110,7 +110,6 @@
       <div class="grouplabel">Spacing</div>
       <div class="controls" id="t_space"></div>
       <div class="row">
-        <label class="toggle"><input type="checkbox" id="glowToggle"> glow</label>
         <label class="toggle"><input type="checkbox" id="linkGap"> 🔗 lock vertical gap = text-line gap</label>
         <button id="snapR">⟳ flame width = R width</button>
       </div>
@@ -137,6 +136,9 @@
       <div class="row" style="margin-top:.2rem"><label class="toggle"><input type="checkbox" id="gradToggle"> gradient across the 3 icons (else individual)</label></div>
       <div class="controls" id="t_icongrad" style="margin-top:.8rem"></div>
       <div class="palette-controls" id="t_iconcolors" style="margin-top:.9rem"></div>
+      <div class="grouplabel">Glow</div>
+      <div class="row" style="margin-top:.2rem"><label class="toggle"><input type="checkbox" id="glowToggle"> glow on the icons</label></div>
+      <div class="controls" id="t_glow" style="margin-top:.8rem"></div>
       <div class="grouplabel">Text colour — Resonance / Labs</div>
       <div class="row" style="margin-top:.2rem"><label class="toggle"><input type="checkbox" id="textGradToggle"> gradient across both words (brand flow) — else individual</label></div>
       <div class="controls" id="t_textgrad" style="margin-top:.8rem"></div>
@@ -266,7 +268,8 @@ function drawLetters(){const FS=240,baseY=260,x0=80,gap=190,capPx=capR*FS,xPx=xR
 /* controls */
 const G_SIZE=[{k:'SW',label:'Stroke'},{k:'A',label:'Wave amp'},{k:'FW',label:'Flame width → R'},{k:'Lf',label:'Flame length'},{k:'Ls',label:'Stem length'},{k:'Lb',label:'Base length'}];
 const RANGES={SW:[2,11,.5],A:[1,16,.5],FW:[18,90,1],Lf:[18,90,1],Ls:[10,80,1],Lb:[8,64,1],Vg:[0,30,.5],GAP:[0,96,1],GLOW:[0,24,.5],FZ:[28,160,1],LH:[34,200,1],opsz:[9,144,1],wght:[300,700,10],SOFT:[0,100,1],WONK:[0,1,1],gradAngle:[0,360,5],gradMid:[.1,.9,.05],textGradAngle:[0,360,5]};
-const G_SPACE=[{k:'Vg',label:'Vertical gap (edge→edge)'},{k:'GAP',label:'Logo ↔ text'},{k:'GLOW',label:'Glow intensity'}];
+const G_SPACE=[{k:'Vg',label:'Vertical gap (edge→edge)'},{k:'GAP',label:'Logo ↔ text'}];
+const G_GLOW=[{k:'GLOW',label:'Glow intensity'}];
 const G_TYPE=[{k:'FZ',label:'Font size px'},{k:'LH',label:'Line spacing px'},{k:'opsz',label:'Optical (opsz)'},{k:'wght',label:'Weight'},{k:'SOFT',label:'Soft'},{k:'WONK',label:'Wonk'}];
 const G_ICONGRAD=[{k:'gradAngle',label:'Icon gradient angle°'},{k:'gradMid',label:'Icon gradient midpoint'}];
 const G_TEXTGRAD=[{k:'textGradAngle',label:'Text gradient angle°'}];
@@ -285,7 +288,7 @@ function renderSliders(elId,arr,group){$(elId).innerHTML=arr.map(s=>{const[mn,mx
   arr.forEach(s=>{const el=$('s_'+s.k);el.addEventListener('input',e=>{P[s.k]=parseFloat(e.target.value);$('v_'+s.k).textContent=P[s.k];handle(s.k,group);});el.addEventListener('change',pushHistory);});}
 function renderColors(elId,arr,kind){$(elId).innerHTML=arr.map(c=>`<div class="swatch"><label>${c.g?`<span style="color:${P[c.k]}">${glyphSVG(c.g)}</span>`:''}${c.label}</label><input type="color" id="c_${c.k}" value="${P[c.k]}"></div>`).join('');
   arr.forEach(c=>{const el=$('c_'+c.k);el.addEventListener('input',e=>{P[c.k]=e.target.value;const lab=el.previousElementSibling&&el.previousElementSibling.querySelector('span');if(lab)lab.style.color=P[c.k];applyPalette();drawLetters();update();});el.addEventListener('change',pushHistory);});}
-function renderAllControls(){renderSliders('t_size',G_SIZE,'size');renderSliders('t_space',G_SPACE,'space');renderSliders('t_type',G_TYPE,'type');renderSliders('t_icongrad',G_ICONGRAD,'icongrad');renderSliders('t_textgrad',G_TEXTGRAD,'textgrad');renderColors('t_iconcolors',ICON_COLORS,'icon');renderColors('t_textcolors',TEXT_COLORS,'text');renderColors('t_surface',SURFACE_COLORS,'surface');$('fontSelect').value=P.font;syncLinkedGap();}
+function renderAllControls(){renderSliders('t_size',G_SIZE,'size');renderSliders('t_space',G_SPACE,'space');renderSliders('t_glow',G_GLOW,'space');renderSliders('t_type',G_TYPE,'type');renderSliders('t_icongrad',G_ICONGRAD,'icongrad');renderSliders('t_textgrad',G_TEXTGRAD,'textgrad');renderColors('t_iconcolors',ICON_COLORS,'icon');renderColors('t_textcolors',TEXT_COLORS,'text');renderColors('t_surface',SURFACE_COLORS,'surface');$('fontSelect').value=P.font;syncLinkedGap();}
 
 /* defaults & reset */
 function setDefaults(){const base={FZ:72,LH:63,opsz:144,wght:400,SOFT:0,WONK:0,italic:false,GLOW:4,GAP:24,font:'Fraunces',cHuman:'#FF5A1F',cMachine:'#22D3EE',cGold:'#FFC23D',cFlash:'#FFE7A3',cGround:'#190613',cDust:'#FCEBD6',gradAngle:0,gradMid:0.5,cWord1:'#FCEBD6',cWord2:'#FCEBD6',textGradAngle:0,grad:false,glow:false,textGrad:false};
