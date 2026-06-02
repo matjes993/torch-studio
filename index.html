@@ -114,6 +114,7 @@
         <label class="toggle"><input type="checkbox" id="linkGap"> 🔗 lock vertical gap = text-line gap</label>
         <button id="snapR">⟳ flame width = R width</button>
         <button id="alignH">⇕ align text height to icon</button>
+        <button id="matchGap">⇿ space = icon width</button>
       </div>
       <div class="pane-foot"><button data-resettab="shape">⟲ reset shape &amp; spacing</button></div>
     </div>
@@ -282,7 +283,7 @@ function drawLetters(){const FS=240,baseY=260,x0=80,gap=190,capPx=capR*FS,xPx=xR
 
 /* controls */
 const G_SIZE=[{k:'SW',label:'Stroke'},{k:'A',label:'Wave amp'},{k:'FW',label:'Flame width → R'},{k:'Lf',label:'Flame length'},{k:'Ls',label:'Stem length'},{k:'Lb',label:'Base length'}];
-const RANGES={SW:[2,11,.5],A:[1,16,.5],FW:[18,90,1],Lf:[18,90,1],Ls:[10,80,1],Lb:[8,64,1],Vg:[0,30,.5],GAP:[0,96,1],GLOW:[0,24,.5],FZ:[28,160,1],LH:[34,200,1],opsz:[9,144,1],wght:[300,700,10],SOFT:[0,100,1],WONK:[0,1,1],gradAngle:[0,360,5],gradMid:[.1,.9,.05],textGradAngle:[0,360,5]};
+const RANGES={SW:[2,11,.5],A:[1,16,.5],FW:[18,90,1],Lf:[18,90,1],Ls:[10,80,1],Lb:[8,64,1],Vg:[0,30,.5],GAP:[0,240,1],GLOW:[0,24,.5],FZ:[28,160,1],LH:[34,200,1],opsz:[9,144,1],wght:[300,700,10],SOFT:[0,100,1],WONK:[0,1,1],gradAngle:[0,360,5],gradMid:[.1,.9,.05],textGradAngle:[0,360,5]};
 const G_SPACE=[{k:'Vg',label:'Vertical gap (edge→edge)'},{k:'GAP',label:'Logo ↔ text'}];
 const G_GLOW=[{k:'GLOW',label:'Glow intensity'}];
 const G_TYPE=[{k:'FZ',label:'Font size px'},{k:'LH',label:'Line spacing px'},{k:'opsz',label:'Optical (opsz)'},{k:'wght',label:'Weight'},{k:'SOFT',label:'Soft'},{k:'WONK',label:'Wonk'}];
@@ -451,6 +452,7 @@ document.fonts.load("400 1000px Fraunces").then(()=>document.fonts.ready).then((
   $('textGlowToggle').addEventListener('change',e=>{P.textGlow=e.target.checked;update();pushHistory();});
   $('snapR').addEventListener('click',()=>{P.FW=Math.round(RW);$('s_FW').value=P.FW;$('v_FW').textContent=P.FW;update();pushHistory();});
   $('alignH').addEventListener('click',()=>{const th=torchGeometry(currentState()).totalH;const r=P.LH/P.FZ;const nf=Math.min(160,Math.max(28,Math.round(th/(capR+r))));P.FZ=nf;P.LH=Math.round(r*nf);recomputeMetrics();renderAllControls();drawLetters();update();pushHistory();});
+  $('matchGap').addEventListener('click',()=>{P.GAP=Math.round(torchGeometry(currentState()).width);const s=$('s_GAP');if(s)s.value=P.GAP;const v=$('v_GAP');if(v)v.textContent=P.GAP;update();pushHistory();});
   $('s_iconRatio').addEventListener('input',e=>{applyIconRatio(parseFloat(e.target.value));syncGeomSliders();update();});
   $('s_iconRatio').addEventListener('change',pushHistory);
   $('undoBtn').addEventListener('click',undo);
